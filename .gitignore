@@ -1,0 +1,6 @@
+.venv/
+data/
+results/*/*.pkl
+results/*/*.pt
+__pycache__/
+.pytest_cache/

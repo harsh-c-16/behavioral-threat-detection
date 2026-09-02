@@ -1,0 +1,10 @@
+# CPU-only PyTorch wheels (no CUDA download); other packages come from PyPI.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1
+numpy==2.5.4
+pandas==3.1.0
+pyarrow==26.0.0
+scikit-learn==1.9.1
+shap==0.54.1
+matplotlib==3.11.2
+pytest==9.1.1
