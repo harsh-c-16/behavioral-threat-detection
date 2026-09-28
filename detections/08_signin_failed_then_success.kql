@@ -1,0 +1,20 @@
+// Name: Repeated failed Entra ID sign-ins followed by a success (cloud variant of rule 04)
+// MITRE ATT&CK: T1110 Brute Force; T1078 Valid Accounts
+// Detects: >= 3 failed interactive sign-ins then a successful one for the same user and
+//   source IP within one hour.
+// Table/columns: SigninLogs - TimeGenerated, UserPrincipalName, IPAddress, ResultType
+//   ("0" = success), AppDisplayName
+// Pandas equivalent: baseline_rules.fail_then_success (same logic; LANL has no cloud sign-ins,
+//   so it is exercised on the on-prem auth events, grouped by user and target host)
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let min_failures = 3;
+SigninLogs
+| where TimeGenerated > ago(1d)
+| summarize Failures = countif(ResultType != "0"),
+            FirstFailure = minif(TimeGenerated, ResultType != "0"),
+            LastSuccess = maxif(TimeGenerated, ResultType == "0"),
+            Apps = make_set(AppDisplayName, 10)
+    by UserPrincipalName, IPAddress, bin(TimeGenerated, 1h)
+| where Failures >= min_failures and LastSuccess > FirstFailure

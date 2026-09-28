@@ -1,0 +1,21 @@
+// Name: RDP logon to a host the account has never used
+// MITRE ATT&CK: T1021.001 Remote Services: Remote Desktop Protocol
+// Detects: a successful RemoteInteractive (type 10) logon to a computer that is new for the account.
+// Table/columns: SecurityEvent - EventID 4624, TimeGenerated, TargetUserName, Computer,
+//   LogonType, IpAddress
+// Pandas equivalent: baseline_rules.event_rules -> "rdp_new_host"
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let lookback = 14d;
+let detection = 1d;
+let known = SecurityEvent
+    | where TimeGenerated between (ago(lookback) .. ago(detection))
+    | where EventID == 4624 and LogonType in (2, 3, 10)
+    | distinct TargetUserName, Computer;
+SecurityEvent
+| where TimeGenerated > ago(detection)
+| where EventID == 4624 and LogonType == 10
+| where TargetUserName !endswith "$"
+| join kind=leftanti known on TargetUserName, Computer
+| project TimeGenerated, TargetUserName, Computer, IpAddress

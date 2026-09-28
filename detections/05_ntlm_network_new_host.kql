@@ -1,0 +1,24 @@
+// Name: NTLM network logon to a host the account has never used
+// MITRE ATT&CK: T1550.002 Use Alternate Authentication Material: Pass the Hash; T1021
+// Detects: a successful type-3 logon authenticated with NTLM to a computer that is new for
+//   the account. Pass-the-hash tools authenticate with NTLM because they hold a hash, not a
+//   Kerberos ticket. (Many public PtH hunts also check LogonProcessName == "NtLmSsp" and
+//   KeyLength == 0; LANL does not carry those fields, so they are left out here.)
+// Table/columns: SecurityEvent - EventID 4624, TimeGenerated, TargetUserName, Computer,
+//   LogonType, AuthenticationPackageName, IpAddress
+// Pandas equivalent: baseline_rules.event_rules -> "ntlm_new_host"
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let lookback = 14d;
+let detection = 1d;
+let known = SecurityEvent
+    | where TimeGenerated between (ago(lookback) .. ago(detection))
+    | where EventID == 4624 and LogonType in (2, 3, 10)
+    | distinct TargetUserName, Computer;
+SecurityEvent
+| where TimeGenerated > ago(detection)
+| where EventID == 4624 and LogonType == 3 and AuthenticationPackageName == "NTLM"
+| where TargetUserName !endswith "$" and TargetUserName !in ("ANONYMOUS LOGON", "SYSTEM")
+| join kind=leftanti known on TargetUserName, Computer
+| project TimeGenerated, TargetUserName, Computer, IpAddress, WorkstationName

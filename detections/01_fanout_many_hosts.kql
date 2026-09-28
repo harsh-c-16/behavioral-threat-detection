@@ -1,0 +1,19 @@
+// Name: Account authenticates to many distinct hosts within one hour (fan-out)
+// MITRE ATT&CK: T1021 Remote Services (Lateral Movement)
+// Detects: one user account with successful network (3) or RDP (10) logons to >= 10
+//   distinct computers inside a 1-hour bin, the typical shape of scripted lateral movement.
+// Table/columns: SecurityEvent - EventID 4624, TimeGenerated, TargetUserName,
+//   TargetDomainName, Computer (target host), LogonType
+// Pandas equivalent: baseline_rules.score_windows -> "fanout" (features.n_dst >= FANOUT_K)
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let threshold = 10;
+SecurityEvent
+| where TimeGenerated > ago(1d)
+| where EventID == 4624 and LogonType in (3, 10)
+| where TargetUserName !endswith "$" and TargetUserName !in ("ANONYMOUS LOGON", "SYSTEM")
+| summarize DistinctHosts = dcount(Computer), Hosts = make_set(Computer, 50)
+    by TargetUserName, TargetDomainName, bin(TimeGenerated, 1h)
+| where DistinctHosts >= threshold
+| order by DistinctHosts desc

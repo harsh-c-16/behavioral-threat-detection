@@ -1,0 +1,24 @@
+// Name: First-ever logon by a user to a host
+// MITRE ATT&CK: T1021 Remote Services; T1078 Valid Accounts
+// Detects: a successful remote logon (type 3/10) by an account to a computer it has never
+//   logged on to during the lookback period. Noisy on its own; strongest combined with others.
+// Table/columns: SecurityEvent - EventID 4624, TimeGenerated, TargetUserName, Computer,
+//   LogonType, IpAddress, WorkstationName
+// Pandas equivalent: baseline_rules.event_rules -> "first_pair" (features.new_pair & remote).
+//   The pandas version uses the whole log so far as history; here the lookback is 14 days.
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let lookback = 14d;
+let detection = 1d;
+let known = SecurityEvent
+    | where TimeGenerated between (ago(lookback) .. ago(detection))
+    | where EventID == 4624 and LogonType in (2, 3, 10)
+    | distinct TargetUserName, Computer;
+SecurityEvent
+| where TimeGenerated > ago(detection)
+| where EventID == 4624 and LogonType in (3, 10)
+| where TargetUserName !endswith "$" and TargetUserName !in ("ANONYMOUS LOGON", "SYSTEM")
+| summarize FirstSeen = min(TimeGenerated), Logons = count(), SourceHosts = make_set(WorkstationName, 10)
+    by TargetUserName, Computer
+| join kind=leftanti known on TargetUserName, Computer

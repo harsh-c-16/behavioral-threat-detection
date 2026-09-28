@@ -1,0 +1,26 @@
+// Name: Logon at an hour that is rare for this user
+// MITRE ATT&CK: T1078 Valid Accounts
+// Detects: successful logons (type 2/3/10) in an hour of day that made up < 1% of the
+//   user's logons during a 14-day baseline. Per-user, so night-shift staff are not flagged.
+// Table/columns: SecurityEvent - EventID 4624, TimeGenerated, TargetUserName, Computer, LogonType
+// Pandas equivalent: baseline_rules.event_rules -> "off_hours" (features.hour_freq < OFF_HOURS_FREQ)
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let min_share = 0.01;
+let logons = SecurityEvent
+    | where EventID == 4624 and LogonType in (2, 3, 10)
+    | where TargetUserName !endswith "$" and TargetUserName !in ("ANONYMOUS LOGON", "SYSTEM")
+    | extend Hour = hourofday(TimeGenerated);
+let counts = logons
+    | where TimeGenerated between (ago(15d) .. ago(1d))
+    | summarize N = count() by TargetUserName, Hour;
+let baseline = counts
+    | join kind=inner (counts | summarize Total = sum(N) by TargetUserName) on TargetUserName
+    | project TargetUserName, Hour, Share = todouble(N) / Total;
+logons
+| where TimeGenerated > ago(1d)
+| join kind=leftouter baseline on TargetUserName, Hour
+| extend Share = coalesce(Share, 0.0)
+| where Share < min_share
+| project TimeGenerated, TargetUserName, Computer, LogonType, Hour, Share

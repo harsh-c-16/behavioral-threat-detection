@@ -1,0 +1,19 @@
+// Name: Repeated failed logons followed by a success on the same host
+// MITRE ATT&CK: T1110 Brute Force
+// Detects: >= 3 failed logons (4625) then a successful logon (4624) for the same account on
+//   the same computer within one hour - password guessing that eventually worked.
+// Table/columns: SecurityEvent - EventID 4624/4625, TimeGenerated, TargetUserName, Computer
+// Pandas equivalent: baseline_rules.fail_then_success
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let min_failures = 3;
+SecurityEvent
+| where TimeGenerated > ago(1d)
+| where EventID in (4624, 4625)
+| where TargetUserName !endswith "$" and TargetUserName !in ("ANONYMOUS LOGON", "SYSTEM")
+| summarize Failures = countif(EventID == 4625),
+            FirstFailure = minif(TimeGenerated, EventID == 4625),
+            LastSuccess = maxif(TimeGenerated, EventID == 4624)
+    by TargetUserName, Computer, bin(TimeGenerated, 1h)
+| where Failures >= min_failures and LastSuccess > FirstFailure

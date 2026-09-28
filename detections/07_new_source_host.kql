@@ -1,0 +1,23 @@
+// Name: Account logs on remotely from a source host it has never used
+// MITRE ATT&CK: T1078 Valid Accounts
+// Detects: a successful remote logon (type 3/10) whose source workstation is new for the
+//   account - a stolen credential being used from an attacker-controlled or pivot host.
+// Table/columns: SecurityEvent - EventID 4624, TimeGenerated, TargetUserName, Computer,
+//   LogonType, WorkstationName, IpAddress
+// Pandas equivalent: baseline_rules.event_rules -> "new_src" (features.new_src)
+// Validation: logic validated locally on the LANL-shaped data via the pandas equivalent
+//   in src/baseline_rules.py (see function noted above). NOT run in a live Microsoft
+//   Sentinel workspace.
+let lookback = 14d;
+let detection = 1d;
+let known_sources = SecurityEvent
+    | where TimeGenerated between (ago(lookback) .. ago(detection))
+    | where EventID == 4624 and LogonType in (3, 10)
+    | distinct TargetUserName, WorkstationName;
+SecurityEvent
+| where TimeGenerated > ago(detection)
+| where EventID == 4624 and LogonType in (3, 10) and isnotempty(WorkstationName)
+| where TargetUserName !endswith "$" and TargetUserName !in ("ANONYMOUS LOGON", "SYSTEM")
+| join kind=leftanti known_sources on TargetUserName, WorkstationName
+| summarize FirstSeen = min(TimeGenerated), Targets = make_set(Computer, 20)
+    by TargetUserName, WorkstationName
