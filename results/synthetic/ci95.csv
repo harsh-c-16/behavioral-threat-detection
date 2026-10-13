@@ -1,0 +1,4 @@
+model,pr_auc_lo,pr_auc_hi,precision_lo,precision_hi,recall_lo,recall_hi
+Rule baseline,0.5012,0.7778,0.4878,0.8,0.4544,0.7577
+Isolation Forest,0.4389,0.7343,0.3518,0.6586,0.3784,0.6819
+Transformer,0.7412,0.927,0.4909,0.7647,0.7027,0.9444
