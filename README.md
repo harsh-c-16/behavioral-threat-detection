@@ -96,23 +96,14 @@ make train && make eval
 They were checked locally through identical pandas logic, **not** in a live Sentinel
 workspace.
 
-## Limitations
-
-- **Few positives:** 95 positive hours, almost all from one attacker host.
-- **Sampled data:** 10% of users and 10 of the 58 days.
-- **Split changed once:** the train/calibration split was changed once after a first
-  run (the weekend issue).
-- **Synthetic tuning:** the Transformer's hourly scoring was chosen on synthetic data.
-- **Untested in Sentinel:** the KQL was not run in Sentinel.
-
 ## Credits
 
-- **Data:** LANL 2015 Comprehensive Multi-Source Cyber-Security Events, A. D. Kent,
-  [doi:10.17021/1179829](http://dx.doi.org/10.17021/1179829).
+- **Data:** A. D. Kent, “Comprehensive, Multi-Source Cybersecurity Events,”
+Los Alamos National Laboratory, http://dx.doi.org/10.17021/1179829, 2015.
 - **Ideas (no code copied):**
   - [Euler](https://github.com/iHeartGraph/Euler): lateral-movement detection on LANL.
   - [safekit](https://github.com/pnnl/safekit): log events as sentences.
 - **Libraries:** PyTorch, scikit-learn, SHAP, pandas, NumPy, PyArrow, matplotlib,
   pytest.
 
-Everything else here was written for this project. MIT license.
+Everything else here was written for this project.
